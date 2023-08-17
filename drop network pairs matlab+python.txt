@@ -1,0 +1,105 @@
+%F:\……mask
+
+%pos network
+ma = sum_pos_mask;
+[m,n] = find(triu(ma) == 1);
+m2 = m;n2 = n;
+for i = 1:max(ID)
+    m2(ismember(m2, find(ID == i))) = i;
+    n2(ismember(n2, find(ID == i))) = i;
+end
+label_N = [m2,n2];
+for i = 1:max(ID)
+    for j = 1:max(ID)
+        map1(i,j) = length(find(label_N(:,1) == i & label_N(:,2) == j));
+    end
+end
+for i = 1:max(ID)
+    for j = 1:max(ID)
+        map2(i,j) = length(find(label_N(:,1) == j & label_N(:,2) == i));
+    end
+end
+map2(logical(eye(size(map2))))=0;
+map_dis_pos = map1 + map2;
+%x1 = imagesc(map_dis_pos);
+
+%neg network
+ma = sum_neg_mask;
+[mm,nn] = find(triu(ma) == 1);
+m2 = mm;n2 = nn;
+for i = 1:max(ID)
+    m2(ismember(m2, find(ID == i))) = i;
+    n2(ismember(n2, find(ID == i))) = i;
+end
+label_N = [m2,n2];
+for i = 1:max(ID)
+    for j = 1:max(ID)
+        map3(i,j) = length(find(label_N(:,1) == i & label_N(:,2) == j));
+    end
+end
+for i = 1:max(ID)
+    for j = 1:max(ID)
+        map4(i,j) = length(find(label_N(:,1) == j & label_N(:,2) == i));
+    end
+end
+
+map4(logical(eye(size(map4))))=0;
+map_dis_neg = map3 + map4;
+%x2 = imagesc(map_dis_neg);
+
+%%
+map_dis_minus = map_dis_pos - map_dis_neg;
+x3 = imagesc(map_dis_minus);
+
+z1 = length(find(map_dis_pos == map_dis_neg));
+z2 = length(find(map_dis_neg == 0));
+z3 = length(find(map_dis_minus == 0));
+
+%%
+%pos-neg
+[X,Y] = find(map_dis_minus);
+del_pair = [X,Y];
+%mmg = {}
+for i = 1:length(del_pair)
+    x_del=[];y_del=[];
+    x_del = find(ID==del_pair(i,1));
+    y_del = find(ID==del_pair(i,2));
+    MM=M;
+    for j = 1:length(M)
+        MM{1,j}(x_del,y_del) = 0;
+        %mmg{1,j}=MM{1,j};
+    end
+    %K FOLD
+    times = 10; thresh = 0.01;
+    X=MM'; Y=Moriginality; Z=[age,gender,head];
+    [r, p, Mask] = pCPM_k_times_folds_WXY(times, X, Y, Z, thresh);
+    
+    del_pair_r(i)=r
+    del_pair_p(i)=p
+end
+
+
+"_______________python_________"
+'''detect outliers'''
+
+
+import pandas as pd
+import numpy as np
+
+
+'''Quartile Finding outliers'''
+def iqr_outliers(df):
+    q1 = df.quantile(0.25)
+    q3 = df.quantile(0.75)
+    iqr = q3-q1
+    Lower_tail = q1 - 1.5 * iqr
+    Upper_tail = q3 + 1.5 * iqr
+    for i in df.iloc[:,0]:
+        if  i > float(Upper_tail) or i < float(Lower_tail):#float
+            out.append(i)
+    print("Outliers:",out)
+
+
+path = r'F:\…\del_net\del_net_pair.xlsx'
+
+df = pd.read_excel(io=path)

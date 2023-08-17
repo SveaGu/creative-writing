@@ -1,0 +1,87 @@
+workpath='F:\……\firstlevel\SBC_01' %conn matrix
+cd(workpath); sub = dir; sub(1:2) = [];
+
+%conn k-fold
+M=cell(1,57);
+for i =1:57
+     file(i) = load(sub(i).name);
+     file(i).Z(:,401) = [];
+     a = file(i).Z;
+     a(isnan(a))=0; %transfer nan to 0
+     M{1,i}=a;
+     %M(:,:,i)=a;
+     a=[];
+end
+
+%delete subs whose headmotion＞0.2
+%ses-02
+M(:,[11,15,45,50,57]) = []; %Kfold cell
+M'
+
+%behavior data
+workpath = 'D:\……';
+cd(workpath); behavior=dir(workpath);behavior(1:2)=[];sub_behavior=behavior(11).name;
+behav_M = xlsread(sub_behavior);
+Moriginality = behav_M(:,13);
+%control variables
+gender = behav_M(:,1);
+age = behav_M(:,2);
+head = average';%head_motion code
+
+%head motion＞0.2（sub109,113）
+Moriginality([11,15,45,50,57]) = [];gender([11,15,45,50,57]) = [];age([11,15,45,50,57]) = [];
+head([11,15,45,50,57]) = [];
+
+%%
+%K FOLD
+%group_time = 1000;%permutation time
+times = 10; thresh = 0.01;
+X=M'; Y=Moriginality; Z=[age,gender,head];
+
+[r, p, Mask,ps1,Y] = pCPM_k_times_folds_WXY(times, X, Y, Z, thresh)
+save r r;
+save p p;
+save Mask Mask;
+
+%%
+%1000permutation
+for j = 1:1000
+    fprintf('%d\n',j);
+    X1 = X(randperm(length(X)));%daluanshunxu
+    [rr, pp,mask_perm] = pCPM_k_times_folds_WXY(times, X1, Y, Z, thresh);
+%     for i = 1:length(X))%52
+%         p_per.pos(i,j) = corr(rr.pos{i},r.pos{i});
+%         p_per.neg(i,j) = corr(rr.neg{i},r.neg{i});
+%         p_per.sum1(i,j) = corr(rr.sum1{i},r.sum1{i});
+%     end
+    pos_ratio(j,1) = rr.pos;
+    neg_ratio(j,1) = rr.neg;
+    sum1_ratio(j,1) = rr.sum1;  
+    %clear a FC2 r_pn r_pa predicted_bn2 real_bn2 predicted_ba2 real_ba2;
+end
+
+perm_pos = sum( pos_ratio>r.pos)/length(pos_ratio);
+perm_neg = sum( neg_ratio>r.neg)/length(neg_ratio);
+perm_sum1 = sum( sum1_ratio>r.sum1)/length(sum1_ratio);
+
+save result perm_pos perm_neg perm_sum1;
+save permutation_distribution pos_ratio neg_ratio sum1_ratio;
+save real_r r;
+%%
+for j = 1:1000
+    fprintf('%d\n',j);
+    a = randperm(length(FC));
+    FC2 = FC(a);
+    [predicted_bn2, real_bn2,r_pn, ~, ~] = pCPM_k_folds(length(FC), FC2, N, Z, 0.01);
+    [predicted_ba2, real_ba2,r_pa, ~, ~] = pCPM_k_folds(length(FC), FC2, A, Z, 0.01);
+    for i = 1:length(FC)
+        rn2.pos(i,j) = corr(predicted_bn2.pos{i},real_bn2{i});
+        ra2.pos(i,j) = corr(predicted_ba2.pos{i},real_ba2{i});
+    end
+    rpn(j,1) = r_pn.pos;
+    rpa(j,1) = r_pa.pos;    
+    clear a FC2 r_pn r_pa predicted_bn2 real_bn2 predicted_ba2 real_ba2;
+end
+
+p_n = sum(rpn>r_n.pos)/length(rpn);
+p_a = sum(rpa>r_a.pos)/length(rpa);

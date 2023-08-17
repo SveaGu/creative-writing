@@ -1,0 +1,68 @@
+
+%Turn the masks into one mask
+%calculate the total value of functional connections under the mask for each subject
+%load 'F:\…'中的Mask
+
+%pos network
+sum_pos_mask = ones(400,400);
+for i =1:size(Mask.pos_mask,1)
+    sum_hang =ones(400,400);
+    for j =1:size(Mask.pos_mask,2)
+        sum_hang = sum_hang.*Mask.pos_mask{i,j};
+    end
+    sum_pos_mask_hang{i,:} = sum_hang;
+    
+    sum_pos_mask = sum_pos_mask.*sum_pos_mask_hang{i,:};
+end
+
+[x,y] = find(sum_pos_mask==1);
+save sum_pos_mask sum_pos_mask;
+
+%neg network
+sum_neg_mask = ones(400,400);
+for i =1:size(Mask.neg_mask,1)
+    sum_hang =ones(400,400);
+    for j =1:size(Mask.neg_mask,2)
+        sum_hang = sum_hang.*Mask.neg_mask{i,j};
+    end
+    sum_neg_mask_hang{i,:} = sum_hang;
+    
+    sum_neg_mask = sum_neg_mask.*sum_neg_mask_hang{i,:};
+end
+[x2,y2] = find(sum_neg_mask==1);
+save sum_neg_mask sum_neg_mask;
+sum_strength_mask = sum_pos_mask - sum_neg_mask;
+example_pos = cell2mat(M(1)).* sum_pos_mask;
+example_neg = cell2mat(M(1)).* sum_neg_mask;
+
+%%
+%add fc values according to mask
+workpath='F:\…\SBC_01' %conn fc matrix
+cd(workpath); sub = dir; sub(1:2) = [];
+
+%conn k-fold
+M=cell(1,57);
+for i =1:57
+     file(i) = load(sub(i).name);
+     file(i).Z(:,401) = [];
+     a = file(i).Z;
+     a(isnan(a))=0; 
+     M{1,i}=a;
+     %M(:,:,i)=a;
+     a=[];
+end
+
+%headmotion＞0.2
+%ses-02
+M(:,[11,15,45,50,57]) = []; %Kfold cell
+
+
+%pos mask neg mask sum1(pos-neg)
+for i = 1:52
+    mat_pos_connect{i} = M{:,i}.*sum_pos_mask;
+    mat_neg_connect{i} = M{:,i}.*sum_neg_mask;
+    
+    sum_pos_connect{i,1}=sum(mat_pos_connect{i}(:));%Sum over the entire matrix
+    sum_neg_connect{i,1}=sum(mat_neg_connect{i}(:));
+    sum_sum1_connect{i,1}=sum_pos_connect{i,1}-sum_neg_connect{i,1};
+end
